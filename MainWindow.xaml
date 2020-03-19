@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LaunchMe"
         mc:Ignorable="d"
-        Title="LaunchMe" Height="450" Width="800" Topmost="True" WindowStartupLocation="CenterScreen" WindowStyle="None" DataContext="{Binding RelativeSource={RelativeSource Self}}" AllowsTransparency="True" Background="Transparent">
+        Title="LaunchMe" Height="450" Width="800" Topmost="True" WindowStartupLocation="CenterScreen" WindowStyle="None" DataContext="{Binding RelativeSource={RelativeSource Self}}" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" ResizeMode="NoResize" SizeToContent="Height">
     <Grid x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition></RowDefinition>
@@ -16,8 +16,9 @@
                 <DropShadowEffect ShadowDepth="10" Opacity="0.8"/>
             </Border.Effect>
         </Border>
-        <TextBox x:Name="userInput" Background="Transparent" Foreground="#ECEFF4" Grid.Row="0" Height="auto" CaretBrush="#D8DEE9" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" SnapsToDevicePixels="True" KeyUp="UserInput_KeyUp" TextChanged="UserInput_TextChanged" TextAlignment="Justify" PreviewTextInput="UserInput_PreviewTextInput"/>
-        <ListView x:Name="listResults" SelectedIndex="1" Background="#3B4252" Foreground="#E5E9F0" BorderThickness="0" Grid.Row="1" Height="auto" Width="auto" Opacity="0" IsSynchronizedWithCurrentItem="False"></ListView>
+        <TextBox x:Name="previewResult" Background="Transparent" Foreground="#777777" VerticalAlignment="Center" Grid.Row="0" Height="auto" IsReadOnly="True" IsReadOnlyCaretVisible="False" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" TextAlignment="Justify"></TextBox>
+        <TextBox x:Name="userInput" Background="Transparent" Foreground="#ECEFF4" VerticalAlignment="Center" Grid.Row="0" Height="auto" CaretBrush="#D8DEE9" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" SnapsToDevicePixels="True" KeyUp="UserInput_KeyUp" TextChanged="UserInput_TextChanged" TextAlignment="Justify" PreviewTextInput="UserInput_PreviewTextInput" PreviewLostKeyboardFocus="UserInput_PreviewLostKeyboardFocus"/>
+        <ListView x:Name="listResults" ScrollViewer.HorizontalScrollBarVisibility="Hidden" SelectedIndex="1" Background="#3B4252" Foreground="#E5E9F0" BorderThickness="0" Grid.Row="1" Height="auto" Width="auto" Opacity="0" SelectionChanged="ListResults_SelectionChanged"></ListView>
         <Image x:Name="searchIcon" Source="" Opacity="0.8" Width="64" Height="64" Margin="20" HorizontalAlignment="Right">
             <Image.Effect>
                 <BlurEffect Radius="1" KernelType="Box"/>

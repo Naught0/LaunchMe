@@ -4,6 +4,8 @@
              xmlns:local="clr-namespace:LaunchMe"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+
+        <BitmapImage x:Key="AppIcon" CreateOptions="IgnoreImageCache" CacheOption="OnLoad" UriSource="C:\Users\James\source\repos\LaunchMe\Images\rocket.png"/>
+
     </Application.Resources>
 </Application>
