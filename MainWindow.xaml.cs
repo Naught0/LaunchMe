@@ -79,7 +79,7 @@ namespace LaunchMe
     /// </summary>
     public partial class MainWindow : Window
     {
-        string WinPath = Environment.GetEnvironmentVariable("PATH");
+        readonly string WinPath = Environment.GetEnvironmentVariable("PATH");
         public static double InternalPadding { get; set; }
 
         public int DefaultFontSize { get; set; }
@@ -100,7 +100,7 @@ namespace LaunchMe
 
         private const uint MOD_ALT = 0x0001; //ALT
         private const uint VK_SPACE = 0x20; // SPACE
-        private const int HOTKEY_ID = 90001;
+        private const int HOTKEY_ID = 90001; // Over 9000 haha get it
 
         private HwndSource source;
 
@@ -112,20 +112,26 @@ namespace LaunchMe
             Height = res[1] * .2;
             InternalPadding = Height * 0.8;
             
+            // Why duplicate effort
             if (!File.Exists("Apps.sqlite"))
             {
                 InitDB();
             }
+            // TODO
+            // fix :)
             ScanPrograms();
 
+            // init fonts n' stuff
             userInput.FontFamily = previewResult.FontFamily = FontFace;
             userInput.FontSize = previewResult.FontSize = Height * 0.25;
             userInput.FontWeight = previewResult.FontWeight = FontWeight.FromOpenTypeWeight(300);
             userInput.Focus();
 
+            // Bind search results display to SearchResult list
             listResults.ItemsSource = SearchResults;
         }
 
+        // This is for Global hotkeys
         protected override void OnSourceInitialized(EventArgs e)
         {
             // https://social.technet.microsoft.com/wiki/contents/articles/30568.wpf-implementing-global-hot-keys.aspx
@@ -138,6 +144,7 @@ namespace LaunchMe
             RegisterHotKey(handle, HOTKEY_ID, MOD_ALT, VK_SPACE);
         }
 
+        // So is this
         private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             // https://social.technet.microsoft.com/wiki/contents/articles/30568.wpf-implementing-global-hot-keys.aspx
@@ -154,6 +161,7 @@ namespace LaunchMe
                                 if (WindowState == WindowState.Minimized)
                                 {
                                     WindowState = WindowState.Normal;
+                                    userInput.Focus();
                                 }
                             }
                             handled = true;
@@ -178,6 +186,7 @@ namespace LaunchMe
             + ");";
             SQLiteCommand cmd = new SQLiteCommand(sql, connection);
             cmd.ExecuteNonQuery();
+            cmd.Dispose();
 
             connection.Close();
         }
@@ -186,14 +195,15 @@ namespace LaunchMe
         {
             List<SQLiteCommand> toAdd = new List<SQLiteCommand>();
             
-            // Find executables in registry
             // Find executables in PATHs
             var mask = "*.exe";
             var sources = WinPath.Split(';').ToList<string>();
             foreach (var path in sources)
             {
+                // Catch directory not found
                 try
                 {
+                    // Catch... something else who knows
                     try
                     {
                         foreach (var f in Directory.EnumerateFiles(path, mask, SearchOption.AllDirectories))
@@ -218,6 +228,7 @@ namespace LaunchMe
                 }
             }
 
+            // Write that ish to the DB
             using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
             {
                 connection.Open();
@@ -235,6 +246,7 @@ namespace LaunchMe
             }
         }
 
+        // Waste of a method
         public List<double> GetResolution()
         {
             var screenWidth = Convert.ToInt32(SystemParameters.PrimaryScreenWidth);
@@ -246,11 +258,12 @@ namespace LaunchMe
         {
             if (e.Key == Key.Escape)
             {
-                //Close();
+                //Close(); // This sucks d00d
                 WindowState = WindowState.Minimized;
             }
             if (e.Key == Key.Enter)
             {
+                // Try to start the process
                 try
                 {
                     Process.Start(listResults.SelectedIndex == -1 ? SearchResults[0].Data : SearchResults[listResults.SelectedIndex].Data);
@@ -259,30 +272,36 @@ namespace LaunchMe
                 {
                     listResults.SelectedIndex = 0;
                 }
+                // Display other exceptions
                 catch (Exception ex)
                 {
                     MessageBox.Show(ex.ToString());
                 }
+                // Minimize again
                 finally
                 {
                     WindowState = WindowState.Minimized;
                 }
             }
+            // Mouseless functionality --> down & up navigate the results 
+            // without losing focus of the textbox {big brain}
             if (e.Key == Key.Down)
             {
-                if (listResults.SelectedIndex == SearchResults.Count) { return; }
+                if (listResults.SelectedIndex == SearchResults.Count) { return; } // Out of range
                 listResults.SelectedIndex ++;
             }
             if (e.Key == Key.Up)
             {
-                if (listResults.SelectedIndex == -1) { return; }
+                if (listResults.SelectedIndex == -1) { return; } // Out of range
                 listResults.SelectedIndex --;
             }
         }
 
-
         private async void UserInput_TextChanged(object sender, TextChangedEventArgs e)
         {
+            // Don't search for < 3 characters
+            // TODO:
+            // Make configurable? --> prolly
             if (userInput.Text.Length < 3)
             {
                 listResults.Opacity = 0;
@@ -292,13 +311,15 @@ namespace LaunchMe
 
             SearchResults = new List<ListItemData>();
 
-            var sql = $@"SELECT name, path FROM applications WHERE name LIKE '%{userInput.Text}%';"; // This doesn't work
+            var sql = $@"SELECT name, path FROM applications WHERE name LIKE '%{userInput.Text}%';"; // This is just bad
+                                                                                                     // LIKE may not support parametization (?)
 
             using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
             {
                 connection.Open();
                 using (var cmd = new SQLiteCommand(sql, connection))
                 {
+                    // Async because why not
                     var reader = await cmd.ExecuteReaderAsync();
                     while (reader.Read())
                     {
@@ -322,28 +343,10 @@ namespace LaunchMe
                 }
                 // TODO
                 // searchIcon.Source; change to app icon later
-                //searchIcon.Source = new BitmapImage();
-                //foreach (var result in SearchResults)
-                //{
-                //    listResults.Items.Add(result);
-                //}
-                //List<string> toRemove = new List<string>();
-                //foreach (var item in listResults.Items)
-                //{
-                //    if (!SearchResults.Contains(item))
-                //    {
-                //        toRemove.Add(item);
-                //    }
-                //}
-                //foreach (var item in toRemove)
-                //{
-                //    listResults.Items.Remove(item);
-                //}
+                // searchIcon.Source = new BitmapImage();
             }
             else
             {
-                // clear list
-                //listResults.Items.Clear();
                 previewResult.Text = string.Empty;
                 listResults.Opacity = 0;
             }
@@ -351,12 +354,14 @@ namespace LaunchMe
 
         private void UserInput_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
+            // This breaks SQL and why are you typing it anyway
             if (e.Text.Contains("'"))
             {
                 e.Handled = true;
             }
         }
 
+        // Pfft can't lose focus now
         private void UserInput_PreviewLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
             e.Handled = true;

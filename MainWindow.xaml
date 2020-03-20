@@ -18,11 +18,11 @@
         </Border>
         <TextBox x:Name="previewResult" Background="Transparent" Foreground="#777777" VerticalAlignment="Center" Grid.Row="0" Height="auto" IsReadOnly="True" IsReadOnlyCaretVisible="False" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" TextAlignment="Justify"></TextBox>
         <TextBox x:Name="userInput" Background="Transparent" Foreground="#ECEFF4" VerticalAlignment="Center" Grid.Row="0" Height="auto" CaretBrush="#D8DEE9" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" SnapsToDevicePixels="True" KeyUp="UserInput_KeyUp" TextChanged="UserInput_TextChanged" TextAlignment="Justify" PreviewTextInput="UserInput_PreviewTextInput" PreviewLostKeyboardFocus="UserInput_PreviewLostKeyboardFocus"/>
-        <ListView x:Name="listResults" ScrollViewer.HorizontalScrollBarVisibility="Hidden" SelectedIndex="1" Background="#3B4252" Foreground="#E5E9F0" BorderThickness="0" Grid.Row="1" Height="auto" Width="auto" Opacity="0" SelectionChanged="ListResults_SelectionChanged"></ListView>
-        <Image x:Name="searchIcon" Source="" Opacity="0.8" Width="64" Height="64" Margin="20" HorizontalAlignment="Right">
+        <Image x:Name="searchIcon" Source="Images/close.png" Opacity="0.8" Width="64" Height="64" Margin="20" HorizontalAlignment="Right">
             <Image.Effect>
                 <BlurEffect Radius="1" KernelType="Box"/>
             </Image.Effect>
         </Image>
+        <ListView x:Name="listResults" ScrollViewer.HorizontalScrollBarVisibility="Hidden" SelectedIndex="1" Background="#3B4252" Foreground="#E5E9F0" BorderThickness="0" Grid.Row="1" Height="auto" Width="auto" Opacity="0" SelectionChanged="ListResults_SelectionChanged"></ListView>
     </Grid>
 </Window>
