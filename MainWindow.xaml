@@ -20,7 +20,7 @@
         </Rectangle>
         <Border CornerRadius="15, 15, 15, 15" Margin="0,0,3,3" BorderBrush="#2E3440" BorderThickness="0" Background="{Binding ColorBackground}"></Border>
         <TextBox x:Name="previewResult" Background="Transparent" Foreground="{Binding ColorForegroundPreview}" VerticalAlignment="Center" Grid.Row="0" Height="auto" IsReadOnly="True" IsReadOnlyCaretVisible="False" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" TextAlignment="Justify"></TextBox>
-        <TextBox x:Name="userInput" Background="Transparent" Foreground="{Binding ColorForeground}" VerticalAlignment="Center" Grid.Row="0" Height="auto" CaretBrush="{Binding ColorForeground}" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" SnapsToDevicePixels="True" KeyUp="UserInput_KeyUp" TextChanged="UserInput_TextChanged" TextAlignment="Justify" PreviewTextInput="UserInput_PreviewTextInput" PreviewLostKeyboardFocus="UserInput_PreviewLostKeyboardFocus"/>
+        <TextBox x:Name="userInput" Background="Transparent" Foreground="{Binding ColorForeground}" VerticalAlignment="Center" Grid.Row="0" Height="auto" CaretBrush="{Binding ColorForeground}" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" SnapsToDevicePixels="True" KeyUp="UserInput_KeyUp" TextChanged="UserInput_TextChanged" TextAlignment="Justify" PreviewLostKeyboardFocus="UserInput_PreviewLostKeyboardFocus"/>
         <Image x:Name="searchIcon" Source="Images/close.png" Opacity="0.8" Width="64" Height="64" Margin="20" HorizontalAlignment="Right">
             <Image.Effect>
                 <BlurEffect Radius="1" KernelType="Box"/>

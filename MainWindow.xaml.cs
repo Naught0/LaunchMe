@@ -1,25 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Data.SQLite;
-using System.IO;
-using System.Diagnostics;
-using Microsoft.Win32;
-using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-
+using System.Windows.Media.Imaging;
+using System.Threading.Tasks;
 
 namespace LaunchMe
 {
@@ -37,13 +30,13 @@ namespace LaunchMe
         {
             Display = display;
             Data = data;
-            
+
 
             Orientation = Orientation.Vertical;
 
             MainPane = new StackPanel() { Orientation = Orientation.Horizontal };
             MainPane.Children.Add(icon);
-            MainPane.Children.Add(new TextBlock() { Text = Display, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(Padding), TextTrimming = TextTrimming.CharacterEllipsis } );
+            MainPane.Children.Add(new TextBlock() { Text = Display, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(Padding), TextTrimming = TextTrimming.CharacterEllipsis });
 
             SecondaryPane = new StackPanel() { Orientation = Orientation.Horizontal };
             SecondaryPane.Children.Add(new TextBlock()
@@ -89,7 +82,7 @@ namespace LaunchMe
         public Brush ColorForeground { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#ECEFF4"));
         public Brush ColorForegroundPreview { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#777777"));
         public static Brush ColorForegroundFaded { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#999999"));
-        public static Image SettingsImage { get; set; } = new Image() 
+        public static Image SettingsImage { get; set; } = new Image()
         {
             Source = new BitmapImage(new Uri("Images/cog.png", UriKind.Relative))
         };
@@ -126,7 +119,7 @@ namespace LaunchMe
             Width = res[0] * .22;
             Height = res[1] * .2;
             InternalPadding = Height * 0.8;
-            
+
             // Why duplicate effort
             if (!File.Exists("Apps.sqlite"))
             {
@@ -158,7 +151,7 @@ namespace LaunchMe
             // Utterly neat startup fade in!
             // https://stackoverflow.com/questions/6512223/how-to-show-hide-wpf-window-by-blur-effect
             var sb = new Storyboard();
-            var da = new DoubleAnimation(0.0, toOpacity, new Duration(new TimeSpan(0,0,0,0,FadeInTime))) { AutoReverse = false };
+            var da = new DoubleAnimation(0.0, toOpacity, new Duration(new TimeSpan(0, 0, 0, 0, FadeInTime))) { AutoReverse = false };
             Storyboard.SetTargetProperty(da, new PropertyPath(OpacityProperty));
             sb.Children.Clear();
             sb.Children.Add(da);
@@ -216,7 +209,7 @@ namespace LaunchMe
 
         private void ShowSettings()
         {
-            listResults.ItemsSource = SettingsList;   
+            listResults.ItemsSource = SettingsList;
         }
 
         private void InitDB()
@@ -229,7 +222,7 @@ namespace LaunchMe
             var sql = "CREATE TABLE 'applications'( "
             + "'id'    INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, "
             + "'name'  TEXT NOT NULL, "
-            + "'path'  TEXT NOT NULL UNIQUE" 
+            + "'path'  TEXT NOT NULL UNIQUE"
             + ");";
             SQLiteCommand cmd = new SQLiteCommand(sql, connection);
             cmd.ExecuteNonQuery();
@@ -241,7 +234,7 @@ namespace LaunchMe
         public async void ScanPrograms()
         {
             List<SQLiteCommand> toAdd = new List<SQLiteCommand>();
-            
+
             // Find executables in PATHs
             var mask = "*.exe";
             var sources = WinPath.Split(';').ToList<string>();
@@ -260,7 +253,8 @@ namespace LaunchMe
                                 $"VALUES( @name, @path );");
                             cmd.Parameters.AddWithValue("name", f.Split('\\').Last());
                             cmd.Parameters.AddWithValue("path", f);
-                            if (!toAdd.Contains(cmd)) {
+                            if (!toAdd.Contains(cmd))
+                            {
                                 toAdd.Add(cmd);
                             }
                         }
@@ -270,9 +264,9 @@ namespace LaunchMe
                         continue;
                     }
                 }
-                catch (DirectoryNotFoundException ex)
+                catch (DirectoryNotFoundException)
                 {
-                    MessageBox.Show(ex.ToString());
+                    MessageBox.Show($"Could not load directory\n{path}");
                     continue;
                 }
             }
@@ -288,7 +282,8 @@ namespace LaunchMe
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
-                    catch (SQLiteException){
+                    catch (SQLiteException)
+                    {
                         return;
                     }
                 }
@@ -338,13 +333,51 @@ namespace LaunchMe
             if (e.Key == Key.Down)
             {
                 if (listResults.SelectedIndex == SearchResults.Count) { return; } // Out of range
-                listResults.SelectedIndex ++;
+                listResults.SelectedIndex++;
             }
             if (e.Key == Key.Up)
             {
                 if (listResults.SelectedIndex == -1) { return; } // Out of range
-                listResults.SelectedIndex --;
+                listResults.SelectedIndex--;
             }
+        }
+
+        private List<ListItemFileIcon> DisplaySearchResults()
+        {
+            var ret = new List<ListItemFileIcon>();
+            var sql = @"SELECT name, path FROM applications WHERE name LIKE @SearchFor;";
+            this.Dispatcher.Invoke(() =>
+            {
+                using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand(sql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@SearchFor", "%" + userInput.Text + "%");
+                        var reader = cmd.ExecuteReader();
+                        while (reader.Read())
+                        {
+                            var name = reader.GetString(0);
+                            var fp = reader.GetString(1);
+                            var iconSource = System.Drawing.Icon.ExtractAssociatedIcon(fp);
+                            var icon = new Image()
+                            {
+                                Source = Imaging.CreateBitmapSourceFromHIcon(
+                                    iconSource.Handle,
+                                    Int32Rect.Empty,
+                                    BitmapSizeOptions.FromEmptyOptions()),
+                                Margin = new Thickness(3),
+                                Width = IconSize,
+                                Height = IconSize
+                            };
+                            ret.Add(new ListItemFileIcon(name, fp, icon, IconSize));
+                        }
+                        connection.Close();
+                    }
+                }
+            });
+
+            return ret;
         }
 
         private async void UserInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -364,38 +397,8 @@ namespace LaunchMe
                 return;
             }
 
-            SearchResults = new List<ListItemFileIcon>();
+            SearchResults = await Task.Run(() => DisplaySearchResults()).ConfigureAwait(true);
 
-            var sql = $@"SELECT name, path FROM applications WHERE name LIKE '%{userInput.Text}%';"; // This is just bad
-                                                                                                     // LIKE may not support parametization (?)
-
-            using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
-            {
-                connection.Open();
-                using (var cmd = new SQLiteCommand(sql, connection))
-                {
-                    // Async because why not
-                    var reader = await cmd.ExecuteReaderAsync();
-                    while (reader.Read())
-                    {
-                        var name = reader.GetString(0);
-                        var fp = reader.GetString(1);
-                        var iconSource = System.Drawing.Icon.ExtractAssociatedIcon(fp);
-                        var icon = new Image()
-                        {
-                            Source = Imaging.CreateBitmapSourceFromHIcon(
-                                iconSource.Handle,
-                                Int32Rect.Empty,
-                                BitmapSizeOptions.FromEmptyOptions()),
-                            Margin = new Thickness(3),
-                            Width = IconSize,
-                            Height = IconSize
-                        };
-                        SearchResults.Add(new ListItemFileIcon(name, fp, icon, IconSize));
-                    }
-                }
-                connection.Close();
-            }
             if (SearchResults.Count > 0)
             {
                 FadeComponentIn(listResults);
@@ -418,15 +421,6 @@ namespace LaunchMe
             {
                 previewResult.Text = string.Empty;
                 FadeComponentOut(listResults);
-            }
-        }
-
-        private void UserInput_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            // This breaks SQL and why are you typing it anyway
-            if (e.Text.Contains("'"))
-            {
-                e.Handled = true;
             }
         }
 
