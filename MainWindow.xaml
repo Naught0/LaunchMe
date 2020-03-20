@@ -6,23 +6,30 @@
         xmlns:local="clr-namespace:LaunchMe"
         mc:Ignorable="d"
         Title="LaunchMe" Height="450" Width="800" Topmost="True" WindowStartupLocation="CenterScreen" WindowStyle="None" DataContext="{Binding RelativeSource={RelativeSource Self}}" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" ResizeMode="NoResize" SizeToContent="Height">
-    <Grid x:Name="MainGrid">
+    <Grid x:Name="MainGrid" Margin="0" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition></RowDefinition>
             <RowDefinition></RowDefinition>
         </Grid.RowDefinitions>
-        <Border CornerRadius="15, 15, 0, 0" BorderBrush="#2E3440" BorderThickness="0" Background="#2E3440">
-            <Border.Effect>
-                <DropShadowEffect ShadowDepth="10" Opacity="0.8"/>
-            </Border.Effect>
-        </Border>
-        <TextBox x:Name="previewResult" Background="Transparent" Foreground="#777777" VerticalAlignment="Center" Grid.Row="0" Height="auto" IsReadOnly="True" IsReadOnlyCaretVisible="False" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" TextAlignment="Justify"></TextBox>
-        <TextBox x:Name="userInput" Background="Transparent" Foreground="#ECEFF4" VerticalAlignment="Center" Grid.Row="0" Height="auto" CaretBrush="#D8DEE9" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" SnapsToDevicePixels="True" KeyUp="UserInput_KeyUp" TextChanged="UserInput_TextChanged" TextAlignment="Justify" PreviewTextInput="UserInput_PreviewTextInput" PreviewLostKeyboardFocus="UserInput_PreviewLostKeyboardFocus"/>
+        <Rectangle Margin="3,0,1,0" Fill="Black" RadiusX="15" RadiusY="15" Opacity="0.8">
+            <Rectangle.Effect>
+                <BlurEffect Radius="3" KernelType="Gaussian" RenderingBias="Quality"></BlurEffect>
+            </Rectangle.Effect>
+        </Rectangle>
+        <Rectangle x:Name="shadowResults" Margin="8,13,0,0" Fill="Black" RadiusX="0" RadiusY="0" Opacity="0">
+        </Rectangle>
+        <Border CornerRadius="15, 15, 15, 15" Margin="0,0,3,3" BorderBrush="#2E3440" BorderThickness="0" Background="{Binding ColorBackground}"></Border>
+        <TextBox x:Name="previewResult" Background="Transparent" Foreground="{Binding ColorForegroundPreview}" VerticalAlignment="Center" Grid.Row="0" Height="auto" IsReadOnly="True" IsReadOnlyCaretVisible="False" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" TextAlignment="Justify"></TextBox>
+        <TextBox x:Name="userInput" Background="Transparent" Foreground="{Binding ColorForeground}" VerticalAlignment="Center" Grid.Row="0" Height="auto" CaretBrush="{Binding ColorForeground}" Width="auto" Padding="10" FontFamily="{Binding FontFace}" BorderThickness="0" SnapsToDevicePixels="True" KeyUp="UserInput_KeyUp" TextChanged="UserInput_TextChanged" TextAlignment="Justify" PreviewTextInput="UserInput_PreviewTextInput" PreviewLostKeyboardFocus="UserInput_PreviewLostKeyboardFocus"/>
         <Image x:Name="searchIcon" Source="Images/close.png" Opacity="0.8" Width="64" Height="64" Margin="20" HorizontalAlignment="Right">
             <Image.Effect>
                 <BlurEffect Radius="1" KernelType="Box"/>
             </Image.Effect>
         </Image>
-        <ListView x:Name="listResults" ScrollViewer.HorizontalScrollBarVisibility="Hidden" SelectedIndex="1" Background="#3B4252" Foreground="#E5E9F0" BorderThickness="0" Grid.Row="1" Height="auto" Width="auto" Opacity="0" SelectionChanged="ListResults_SelectionChanged"></ListView>
+        <ListView x:Name="listResults" Margin="0,5,5,5" ScrollViewer.HorizontalScrollBarVisibility="Hidden" SelectedIndex="1" Background="{Binding ColorBackgroundSecondary}" Foreground="#E5E9F0" BorderThickness="0" Grid.Row="1" Height="auto" Width="auto" Opacity="0" SelectionChanged="ListResults_SelectionChanged">
+            <ListView.Effect>
+                <DropShadowEffect BlurRadius="5" ShadowDepth="2" Direction="315" Color="Black" Opacity="0.8"></DropShadowEffect>
+            </ListView.Effect>
+        </ListView>
     </Grid>
 </Window>

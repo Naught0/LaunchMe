@@ -17,10 +17,13 @@ using System.Diagnostics;
 using Microsoft.Win32;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+
 
 namespace LaunchMe
 {
-    public partial class ListItemData : StackPanel
+    public partial class ListItemFileIcon : StackPanel
     {
         public string Display { get; set; }
         public string Data { get; set; }
@@ -30,27 +33,16 @@ namespace LaunchMe
 
         public short Padding { get; set; } = 3;
 
-        public ListItemData(string display, string data, string iconpath, int iconSize) : base()
+        public ListItemFileIcon(string display, string data, Image icon, int iconSize) : base()
         {
             Display = display;
             Data = data;
             
-            var iconSource = System.Drawing.Icon.ExtractAssociatedIcon(iconpath);
-            Icon = new Image()
-            {
-                Source = Imaging.CreateBitmapSourceFromHIcon(
-                    iconSource.Handle,
-                    Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions()),
-                Margin = new Thickness(Padding),
-                Width = iconSize,
-                Height = iconSize,
-            };
 
             Orientation = Orientation.Vertical;
 
             MainPane = new StackPanel() { Orientation = Orientation.Horizontal };
-            MainPane.Children.Add(Icon);
+            MainPane.Children.Add(icon);
             MainPane.Children.Add(new TextBlock() { Text = Display, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(Padding), TextTrimming = TextTrimming.CharacterEllipsis } );
 
             SecondaryPane = new StackPanel() { Orientation = Orientation.Horizontal };
@@ -59,7 +51,7 @@ namespace LaunchMe
                 Text = Data,
                 VerticalAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(Padding),
-                Foreground = (System.Windows.Media.SolidColorBrush)(new System.Windows.Media.BrushConverter().ConvertFrom("#999999")),
+                Foreground = MainWindow.ColorForegroundFaded,
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
 
@@ -79,17 +71,37 @@ namespace LaunchMe
     /// </summary>
     public partial class MainWindow : Window
     {
+        // Windows path
         readonly string WinPath = Environment.GetEnvironmentVariable("PATH");
+
+        // Padding for elems -> probably remove
         public static double InternalPadding { get; set; }
 
         public int DefaultFontSize { get; set; }
-        public System.Windows.Media.FontFamily FontFace { get; set; } = new System.Windows.Media.FontFamily("Segoe UI");
+        public FontFamily FontFace { get; set; } = new FontFamily("Segoe UI");
+        public string DBPath { get; } = "Apps.sqlite";
+        public static int MaxResults { get; set; } = 5;
+        public int FadeInTime { get; set; } = 200;
+        public int FadeOutTime { get; set; } = 150;
+        public static int IconSize { get; set; } = 24;
+        public Brush ColorBackground { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2e3440"));
+        public Brush ColorBackgroundSecondary { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3b4252"));
+        public Brush ColorForeground { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#ECEFF4"));
+        public Brush ColorForegroundPreview { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#777777"));
+        public static Brush ColorForegroundFaded { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#999999"));
+        public static Image SettingsImage { get; set; } = new Image() 
+        {
+            Source = new BitmapImage(new Uri("Images/cog.png", UriKind.Relative))
+        };
+        public List<ListItemFileIcon> SettingsList { get; set; } = new List<ListItemFileIcon>()
+        {
+            new ListItemFileIcon("Max Results", MaxResults.ToString(), SettingsImage, IconSize),
+        };
+        public List<string> MoreScanPaths { get; set; } = new List<string>() { @"C:\Program Files\" };
 
-        public string DBPath { get; set; } = "Apps.sqlite";
-
-        List<ListItemData> SearchResults = new List<ListItemData>();
-
-        int MaxResults = 5;
+        // Current search results
+        // Bound directly to the displayed elements
+        List<ListItemFileIcon> SearchResults = new List<ListItemFileIcon>();
 
         // Global hotkey shenanigans 
         [DllImport("user32.dll")]
@@ -107,6 +119,9 @@ namespace LaunchMe
         public MainWindow()
         {
             InitializeComponent();
+
+
+            // Set size of window based on resolution
             var res = GetResolution();
             Width = res[0] * .22;
             Height = res[1] * .2;
@@ -121,6 +136,9 @@ namespace LaunchMe
             // fix :)
             ScanPrograms();
 
+            // Do settings
+            var settingsStr = new string[] { "IconSize", };
+
             // init fonts n' stuff
             userInput.FontFamily = previewResult.FontFamily = FontFace;
             userInput.FontSize = previewResult.FontSize = Height * 0.25;
@@ -129,6 +147,32 @@ namespace LaunchMe
 
             // Bind search results display to SearchResult list
             listResults.ItemsSource = SearchResults;
+
+            // Fade window in
+            Opacity = 0;
+            FadeComponentIn(this);
+        }
+
+        void FadeComponentIn(FrameworkElement Component, double toOpacity = 1.0)
+        {
+            // Utterly neat startup fade in!
+            // https://stackoverflow.com/questions/6512223/how-to-show-hide-wpf-window-by-blur-effect
+            var sb = new Storyboard();
+            var da = new DoubleAnimation(0.0, toOpacity, new Duration(new TimeSpan(0,0,0,0,FadeInTime))) { AutoReverse = false };
+            Storyboard.SetTargetProperty(da, new PropertyPath(OpacityProperty));
+            sb.Children.Clear();
+            sb.Children.Add(da);
+            sb.Begin(Component);
+        }
+
+        void FadeComponentOut(FrameworkElement Component)
+        {
+            var sb = new Storyboard();
+            var da = new DoubleAnimation((double)Component.Opacity, 0, new Duration(new TimeSpan(0, 0, 0, 0, FadeOutTime))) { AutoReverse = false };
+            Storyboard.SetTargetProperty(da, new PropertyPath(OpacityProperty));
+            sb.Children.Clear();
+            sb.Children.Add(da);
+            sb.Begin(Component);
         }
 
         // This is for Global hotkeys
@@ -158,11 +202,9 @@ namespace LaunchMe
                             int vkey = (((int)lParam >> 16) & 0xFFFF);
                             if (vkey == VK_SPACE)
                             {
-                                if (WindowState == WindowState.Minimized)
-                                {
-                                    WindowState = WindowState.Normal;
-                                    userInput.Focus();
-                                }
+                                FadeComponentIn(this);
+                                Focus();
+                                userInput.Focus();
                             }
                             handled = true;
                             break;
@@ -170,6 +212,11 @@ namespace LaunchMe
                     break;
             }
             return IntPtr.Zero;
+        }
+
+        private void ShowSettings()
+        {
+            listResults.ItemsSource = SettingsList;   
         }
 
         private void InitDB()
@@ -198,6 +245,7 @@ namespace LaunchMe
             // Find executables in PATHs
             var mask = "*.exe";
             var sources = WinPath.Split(';').ToList<string>();
+            sources.AddRange(MoreScanPaths);
             foreach (var path in sources)
             {
                 // Catch directory not found
@@ -224,6 +272,7 @@ namespace LaunchMe
                 }
                 catch (DirectoryNotFoundException ex)
                 {
+                    MessageBox.Show(ex.ToString());
                     continue;
                 }
             }
@@ -259,7 +308,8 @@ namespace LaunchMe
             if (e.Key == Key.Escape)
             {
                 //Close(); // This sucks d00d
-                WindowState = WindowState.Minimized;
+                FadeComponentOut(this);
+                //WindowState = WindowState.;
             }
             if (e.Key == Key.Enter)
             {
@@ -299,17 +349,22 @@ namespace LaunchMe
 
         private async void UserInput_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (userInput.Text.StartsWith(":"))
+            {
+                ShowSettings();
+                return;
+            }
             // Don't search for < 3 characters
             // TODO:
             // Make configurable? --> prolly
             if (userInput.Text.Length < 3)
             {
-                listResults.Opacity = 0;
+                FadeComponentOut(listResults);
                 previewResult.Text = string.Empty;
                 return;
             }
 
-            SearchResults = new List<ListItemData>();
+            SearchResults = new List<ListItemFileIcon>();
 
             var sql = $@"SELECT name, path FROM applications WHERE name LIKE '%{userInput.Text}%';"; // This is just bad
                                                                                                      // LIKE may not support parametization (?)
@@ -323,16 +378,29 @@ namespace LaunchMe
                     var reader = await cmd.ExecuteReaderAsync();
                     while (reader.Read())
                     {
-                        SearchResults.Add(new ListItemData(reader.GetString(0), reader.GetString(1), reader.GetString(1), 24));
+                        var name = reader.GetString(0);
+                        var fp = reader.GetString(1);
+                        var iconSource = System.Drawing.Icon.ExtractAssociatedIcon(fp);
+                        var icon = new Image()
+                        {
+                            Source = Imaging.CreateBitmapSourceFromHIcon(
+                                iconSource.Handle,
+                                Int32Rect.Empty,
+                                BitmapSizeOptions.FromEmptyOptions()),
+                            Margin = new Thickness(3),
+                            Width = IconSize,
+                            Height = IconSize
+                        };
+                        SearchResults.Add(new ListItemFileIcon(name, fp, icon, IconSize));
                     }
                 }
                 connection.Close();
             }
             if (SearchResults.Count > 0)
             {
+                FadeComponentIn(listResults);
                 listResults.SelectedIndex = 0;
-                listResults.Opacity = 1;
-                listResults.ItemsSource = SearchResults;
+                listResults.ItemsSource = SearchResults.Take(5);
                 if (listResults.SelectedIndex == -1)
                 {
                     previewResult.Text = SearchResults[0].Display;
@@ -345,10 +413,11 @@ namespace LaunchMe
                 // searchIcon.Source; change to app icon later
                 // searchIcon.Source = new BitmapImage();
             }
+            // No results
             else
             {
                 previewResult.Text = string.Empty;
-                listResults.Opacity = 0;
+                FadeComponentOut(listResults);
             }
         }
 
