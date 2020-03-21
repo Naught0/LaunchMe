@@ -64,12 +64,8 @@ namespace LaunchMe
     /// </summary>
     public partial class MainWindow : Window
     {
-        // Windows path
-        readonly string WinPath = Environment.GetEnvironmentVariable("PATH");
-
         // Padding for elems -> probably remove
         public static double InternalPadding { get; set; }
-
         public int DefaultFontSize { get; set; }
         public FontFamily FontFace { get; set; } = new FontFamily("Segoe UI");
         public string DBPath { get; } = "Apps.sqlite";
@@ -90,7 +86,8 @@ namespace LaunchMe
         {
             new ListItemFileIcon("Max Results", MaxResults.ToString(), SettingsImage, IconSize),
         };
-        public List<string> MoreScanPaths { get; set; } = new List<string>() { @"C:\Program Files\" };
+
+        public List<string> ScanFolders { get; set; } = new List<string>();
 
         // Current search results
         // Bound directly to the displayed elements
@@ -112,7 +109,7 @@ namespace LaunchMe
         public MainWindow()
         {
             InitializeComponent();
-
+            SetDefaultPaths();
 
             // Set size of window based on resolution
             var res = GetResolution();
@@ -144,6 +141,19 @@ namespace LaunchMe
             // Fade window in
             Opacity = 0;
             FadeComponentIn(this);
+        }
+
+        void SetDefaultPaths()
+        {
+            // Some sane defaults I think should be fine for scans
+            var winPaths = Environment.GetEnvironmentVariable("PATH").Split(';');
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var programFiles = new string[2] { @"C:\Program Files", @"C:\Program Files (x86)" };
+
+            // Add to prop
+            ScanFolders.AddRange(winPaths);
+            ScanFolders.Add(localAppData);
+            ScanFolders.AddRange(programFiles);
         }
 
         void FadeComponentIn(FrameworkElement Component, double toOpacity = 1.0)
@@ -237,9 +247,7 @@ namespace LaunchMe
 
             // Find executables in PATHs
             var mask = "*.exe";
-            var sources = WinPath.Split(';').ToList<string>();
-            sources.AddRange(MoreScanPaths);
-            foreach (var path in sources)
+            foreach (var path in ScanFolders)
             {
                 // Catch directory not found
                 try
@@ -259,9 +267,9 @@ namespace LaunchMe
                             }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        continue;
+                        MessageBox.Show(ex.ToString());
                     }
                 }
                 catch (DirectoryNotFoundException)
