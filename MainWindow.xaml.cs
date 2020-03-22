@@ -249,10 +249,8 @@ namespace LaunchMe
             var mask = "*.exe";
             foreach (var path in ScanFolders)
             {
-                // Catch directory not found
                 try
                 {
-                    // Catch... something else who knows
                     try
                     {
                         foreach (var f in Directory.EnumerateFiles(path, mask, SearchOption.AllDirectories))
@@ -267,14 +265,13 @@ namespace LaunchMe
                             }
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show(ex.ToString());
-                    }
+                    // Access denied etc
+                    catch { }
                 }
+                // Directory not found
                 catch (DirectoryNotFoundException)
                 {
-                    MessageBox.Show($"Could not load directory\n{path}");
+                    MessageBox.Show($"Could not find directory\n{path}");
                     continue;
                 }
             }
@@ -333,7 +330,7 @@ namespace LaunchMe
                 // Minimize again
                 finally
                 {
-                    WindowState = WindowState.Minimized;
+                    FadeComponentOut(this);
                 }
             }
             // Mouseless functionality --> down & up navigate the results 
@@ -350,25 +347,28 @@ namespace LaunchMe
             }
         }
 
-        private List<ListItemFileIcon> DisplaySearchResults()
+        private List<ListItemFileIcon> GetSearchResults(string searchFor, int limit)
         {
             var ret = new List<ListItemFileIcon>();
-            var sql = @"SELECT name, path FROM applications WHERE name LIKE @SearchFor;";
-            this.Dispatcher.Invoke(() =>
+            var sql = @"SELECT name, path FROM applications WHERE name LIKE @SearchFor LIMIT @Limit;";
+            using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
             {
-                using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
+                connection.Open();
+                using (var cmd = new SQLiteCommand(sql, connection))
                 {
-                    connection.Open();
-                    using (var cmd = new SQLiteCommand(sql, connection))
+                    cmd.Parameters.AddWithValue("@SearchFor", "%" + searchFor + "%");
+                    cmd.Parameters.AddWithValue("@Limit", limit);
+                    var reader = cmd.ExecuteReader();
+                    while (reader.Read())
                     {
-                        cmd.Parameters.AddWithValue("@SearchFor", "%" + userInput.Text + "%");
-                        var reader = cmd.ExecuteReader();
-                        while (reader.Read())
+                        var name = reader.GetString(0);
+                        var fp = reader.GetString(1);
+                        var iconSource = System.Drawing.Icon.ExtractAssociatedIcon(fp);
+                        // Have to wrap all UI components in this
+                        // Gives a thread error 
+                        var icon = Dispatcher.Invoke(() =>
                         {
-                            var name = reader.GetString(0);
-                            var fp = reader.GetString(1);
-                            var iconSource = System.Drawing.Icon.ExtractAssociatedIcon(fp);
-                            var icon = new Image()
+                            return new Image()
                             {
                                 Source = Imaging.CreateBitmapSourceFromHIcon(
                                     iconSource.Handle,
@@ -378,13 +378,16 @@ namespace LaunchMe
                                 Width = IconSize,
                                 Height = IconSize
                             };
-                            ret.Add(new ListItemFileIcon(name, fp, icon, IconSize));
-                        }
-                        connection.Close();
+                        });
+                        // Have to wrap all UI Components in this to avoid errors
+                        ret.Add(Dispatcher.Invoke(() =>
+                        {
+                            return new ListItemFileIcon(name, fp, icon, IconSize);
+                        }));
                     }
+                    connection.Close();
                 }
-            });
-
+            }
             return ret;
         }
 
@@ -405,8 +408,15 @@ namespace LaunchMe
                 return;
             }
 
-            SearchResults = await Task.Run(() => DisplaySearchResults()).ConfigureAwait(true);
+            var searchFor = userInput.Text;
+            var maxResults = MaxResults;
 
+            var results = await Task.Run(() =>
+            {
+                return GetSearchResults(searchFor, maxResults);
+            });
+
+            SearchResults = results;
             if (SearchResults.Count > 0)
             {
                 FadeComponentIn(listResults);
