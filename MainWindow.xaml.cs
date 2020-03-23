@@ -146,14 +146,29 @@ namespace LaunchMe
         void SetDefaultPaths()
         {
             // Some sane defaults I think should be fine for scans
-            var winPaths = Environment.GetEnvironmentVariable("PATH").Split(';');
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var programFiles = new string[2] { @"C:\Program Files", @"C:\Program Files (x86)" };
+            //var paths = new List<string>() {
+            //    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            //    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+            //};
+
+            //paths.AddRange(new List<string>() { @"C:\", @"C:\Program Files", @"D:\Program Files" });
+            var paths = new List<string>() { 
+                @"C:\", 
+                @"C:\Program Files", 
+                @"C:\Program Files (x86)", 
+                @"D:\Program Files",
+                @"D:\Program Files (x86)",
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu),
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows)
+            };
+            paths.AddRange(Environment.GetEnvironmentVariable("PATH").Split(';'));
 
             // Add to prop
-            ScanFolders.AddRange(winPaths);
-            ScanFolders.Add(localAppData);
-            ScanFolders.AddRange(programFiles);
+            //MessageBox.Show(string.Join("\n", paths));
+            ScanFolders.AddRange(paths);
         }
 
         void FadeComponentIn(FrameworkElement Component, double toOpacity = 1.0)
@@ -205,9 +220,8 @@ namespace LaunchMe
                             int vkey = (((int)lParam >> 16) & 0xFFFF);
                             if (vkey == VK_SPACE)
                             {
+                                WindowState = WindowState.Normal;
                                 FadeComponentIn(this);
-                                Focus();
-                                userInput.Focus();
                             }
                             handled = true;
                             break;
@@ -246,14 +260,21 @@ namespace LaunchMe
             List<SQLiteCommand> toAdd = new List<SQLiteCommand>();
 
             // Find executables in PATHs
-            var mask = "*.exe";
+            var masks = new List<string>() { 
+                "*.exe", // "*.Exe", "*.EXE", 
+                "*.lnk", //"*.Lnk", "*.LNK",
+                //"*.bat", "*.Bat", "*.BAT",
+                //"*.cmd", "*.Cmd", "*.CMD"
+            };
+            var errs = new List<string>();
             foreach (var path in ScanFolders)
             {
                 try
                 {
                     try
                     {
-                        foreach (var f in Directory.EnumerateFiles(path, mask, SearchOption.AllDirectories))
+                        var thing = masks.SelectMany(g => Directory.EnumerateFiles(path, g, SearchOption.AllDirectories));
+                        foreach (var f in thing)
                         {
                             var cmd = new SQLiteCommand($"INSERT INTO applications (name, path) " +
                                 $"VALUES( @name, @path );");
@@ -266,7 +287,9 @@ namespace LaunchMe
                         }
                     }
                     // Access denied etc
-                    catch { }
+                    catch (Exception ex) {
+                        errs.Add(ex.Message);
+                    }
                 }
                 // Directory not found
                 catch (DirectoryNotFoundException)
@@ -275,6 +298,7 @@ namespace LaunchMe
                     continue;
                 }
             }
+            //MessageBox.Show(string.Join("\n", errs));
 
             // Write that ish to the DB
             using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
@@ -309,7 +333,7 @@ namespace LaunchMe
             {
                 //Close(); // This sucks d00d
                 FadeComponentOut(this);
-                //WindowState = WindowState.;
+                WindowState = WindowState.Minimized;
             }
             if (e.Key == Key.Enter)
             {
@@ -325,12 +349,13 @@ namespace LaunchMe
                 // Display other exceptions
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.ToString());
+                    MessageBox.Show(ex.Message);
                 }
                 // Minimize again
                 finally
                 {
                     FadeComponentOut(this);
+                    WindowState = WindowState.Minimized;
                 }
             }
             // Mouseless functionality --> down & up navigate the results 
@@ -430,9 +455,6 @@ namespace LaunchMe
                 {
                     previewResult.Text = SearchResults[listResults.SelectedIndex].Display;
                 }
-                // TODO
-                // searchIcon.Source; change to app icon later
-                // searchIcon.Source = new BitmapImage();
             }
             // No results
             else
@@ -455,6 +477,12 @@ namespace LaunchMe
                 previewResult.Text = SearchResults[listResults.SelectedIndex].Display;
             }
             catch { }
+        }
+
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            this.Focus();
+            Keyboard.Focus(userInput);
         }
     }
 }
