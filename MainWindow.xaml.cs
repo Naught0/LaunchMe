@@ -24,27 +24,27 @@ namespace LaunchMe
         public StackPanel MainPane { get; set; }
         public StackPanel SecondaryPane { get; set; }
 
-        public short Padding { get; set; } = 3;
-
-        public ListItemFileIcon(string display, string data, Image icon, int iconSize) : base()
+        public ListItemFileIcon(string display, string data, Image icon, UserSettings settings) : base()
         {
             Display = display;
             Data = data;
-
+            // This is probably bad, but I was receiving an error before and now I'm not
+            // Sue me
+            Icon = new Image() { Source = icon.Source };
 
             Orientation = Orientation.Vertical;
 
             MainPane = new StackPanel() { Orientation = Orientation.Horizontal };
-            MainPane.Children.Add(icon);
-            MainPane.Children.Add(new TextBlock() { Text = Display, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(Padding), TextTrimming = TextTrimming.CharacterEllipsis });
+            MainPane.Children.Add(Icon);
+            MainPane.Children.Add(new TextBlock() { Text = Display, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(settings.Padding), TextTrimming = TextTrimming.CharacterEllipsis });
 
             SecondaryPane = new StackPanel() { Orientation = Orientation.Horizontal };
             SecondaryPane.Children.Add(new TextBlock()
             {
                 Text = Data,
                 VerticalAlignment = VerticalAlignment.Center,
-                Padding = new Thickness(Padding),
-                Foreground = MainWindow.ColorForegroundFaded,
+                Padding = new Thickness(settings.Padding),
+                Foreground = settings.ColorForegroundFaded,
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
 
@@ -64,31 +64,7 @@ namespace LaunchMe
     /// </summary>
     public partial class MainWindow : Window
     {
-        // Padding for elems -> probably remove
-        public static double InternalPadding { get; set; }
-        public int DefaultFontSize { get; set; }
-        public FontFamily FontFace { get; set; } = new FontFamily("Segoe UI");
-        public string DBPath { get; } = "Apps.sqlite";
-        public static int MaxResults { get; set; } = 5;
-        public int FadeInTime { get; set; } = 200;
-        public int FadeOutTime { get; set; } = 150;
-        public static int IconSize { get; set; } = 24;
-        public Brush ColorBackground { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2e3440"));
-        public Brush ColorBackgroundSecondary { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3b4252"));
-        public Brush ColorForeground { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#ECEFF4"));
-        public Brush ColorForegroundPreview { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#777777"));
-        public static Brush ColorForegroundFaded { get; set; } = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#999999"));
-        public static Image SettingsImage { get; set; } = new Image()
-        {
-            Source = new BitmapImage(new Uri("Images/cog.png", UriKind.Relative))
-        };
-        public List<ListItemFileIcon> SettingsList { get; set; } = new List<ListItemFileIcon>()
-        {
-            new ListItemFileIcon("Max Results", MaxResults.ToString(), SettingsImage, IconSize),
-        };
-
-        public List<string> ScanFolders { get; set; } = new List<string>();
-
+        public UserSettings settings;
         // Current search results
         // Bound directly to the displayed elements
         List<ListItemFileIcon> SearchResults = new List<ListItemFileIcon>();
@@ -109,28 +85,30 @@ namespace LaunchMe
         public MainWindow()
         {
             InitializeComponent();
-            SetDefaultPaths();
+            settings = new UserSettings();
+            settings.ResetDefaults();
+            DataContext = settings;
 
             // Set size of window based on resolution
             var res = GetResolution();
             Width = res[0] * .22;
             Height = res[1] * .2;
-            InternalPadding = Height * 0.8;
 
             // Why duplicate effort
             if (!File.Exists("Apps.sqlite"))
             {
-                InitDB();
+                if (MessageBox.Show("Could not find apps database, rescan?", "Rescan?", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    InitDB();
+                    ScanPrograms();
+                }
             }
-            // TODO
-            // fix :)
-            ScanPrograms();
 
             // Do settings
             var settingsStr = new string[] { "IconSize", };
 
             // init fonts n' stuff
-            userInput.FontFamily = previewResult.FontFamily = FontFace;
+            userInput.FontFamily = previewResult.FontFamily = settings.FontFace;
             userInput.FontSize = previewResult.FontSize = Height * 0.25;
             userInput.FontWeight = previewResult.FontWeight = FontWeight.FromOpenTypeWeight(300);
             userInput.Focus();
@@ -143,32 +121,10 @@ namespace LaunchMe
             FadeComponentIn(this);
         }
 
-        void SetDefaultPaths()
+        public void ShowSettingsWindow()
         {
-            // Some sane defaults I think should be fine for scans
-            //var paths = new List<string>() {
-            //    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            //    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
-            //};
-
-            //paths.AddRange(new List<string>() { @"C:\", @"C:\Program Files", @"D:\Program Files" });
-            var paths = new List<string>() { 
-                @"C:\", 
-                @"C:\Program Files", 
-                @"C:\Program Files (x86)", 
-                @"D:\Program Files",
-                @"D:\Program Files (x86)",
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu),
-                Environment.GetFolderPath(Environment.SpecialFolder.Windows)
-            };
-            paths.AddRange(Environment.GetEnvironmentVariable("PATH").Split(';'));
-
-            // Add to prop
-            //MessageBox.Show(string.Join("\n", paths));
-            ScanFolders.AddRange(paths);
+            var settingsWindow = new Window1();
+            settingsWindow.Show();
         }
 
         void FadeComponentIn(FrameworkElement Component, double toOpacity = 1.0)
@@ -176,7 +132,7 @@ namespace LaunchMe
             // Utterly neat startup fade in!
             // https://stackoverflow.com/questions/6512223/how-to-show-hide-wpf-window-by-blur-effect
             var sb = new Storyboard();
-            var da = new DoubleAnimation(0.0, toOpacity, new Duration(new TimeSpan(0, 0, 0, 0, FadeInTime))) { AutoReverse = false };
+            var da = new DoubleAnimation(0.0, toOpacity, new Duration(new TimeSpan(0, 0, 0, 0, settings.FadeInTime))) { AutoReverse = false };
             Storyboard.SetTargetProperty(da, new PropertyPath(OpacityProperty));
             sb.Children.Clear();
             sb.Children.Add(da);
@@ -186,7 +142,7 @@ namespace LaunchMe
         void FadeComponentOut(FrameworkElement Component)
         {
             var sb = new Storyboard();
-            var da = new DoubleAnimation((double)Component.Opacity, 0, new Duration(new TimeSpan(0, 0, 0, 0, FadeOutTime))) { AutoReverse = false };
+            var da = new DoubleAnimation((double)Component.Opacity, 0, new Duration(new TimeSpan(0, 0, 0, 0, settings.FadeOutTime))) { AutoReverse = false };
             Storyboard.SetTargetProperty(da, new PropertyPath(OpacityProperty));
             sb.Children.Clear();
             sb.Children.Add(da);
@@ -233,14 +189,14 @@ namespace LaunchMe
 
         private void ShowSettings()
         {
-            listResults.ItemsSource = SettingsList;
+            listResults.ItemsSource = settings.SettingsList;
         }
 
         private void InitDB()
         {
             SQLiteConnection.CreateFile("Apps.sqlite");
 
-            SQLiteConnection connection = new SQLiteConnection($"Data Source={DBPath};version=3;");
+            SQLiteConnection connection = new SQLiteConnection($"Data Source={settings.DBPath};version=3;");
             connection.Open();
 
             var sql = "CREATE TABLE 'applications'( "
@@ -267,7 +223,7 @@ namespace LaunchMe
                 //"*.cmd", "*.Cmd", "*.CMD"
             };
             var errs = new List<string>();
-            foreach (var path in ScanFolders)
+            foreach (var path in settings.ScanFolders)
             {
                 try
                 {
@@ -301,7 +257,7 @@ namespace LaunchMe
             //MessageBox.Show(string.Join("\n", errs));
 
             // Write that ish to the DB
-            using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
+            using (var connection = new SQLiteConnection($"Data Source={settings.DBPath};version=3;"))
             {
                 connection.Open();
                 foreach (var cmd in toAdd)
@@ -349,9 +305,14 @@ namespace LaunchMe
                 // Display other exceptions
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message);
+                    if (MessageBox.Show($"Couldn't launch {SearchResults[0].Data}\nRemove from database?", "Error launching", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    {
+                        // Remove from DB
+                        // RemoveEntry(listResults.SelectedIndex == -1 ? SearchResults[0].Data : SearchResults[listResults.SelectedIndex].Data)
+                    }
+                    // Don't remove
                 }
-                // Minimize again
+                // Minimize again and fade
                 finally
                 {
                     FadeComponentOut(this);
@@ -376,7 +337,7 @@ namespace LaunchMe
         {
             var ret = new List<ListItemFileIcon>();
             var sql = @"SELECT name, path FROM applications WHERE name LIKE @SearchFor LIMIT @Limit;";
-            using (var connection = new SQLiteConnection($"Data Source={DBPath};version=3;"))
+            using (var connection = new SQLiteConnection($"Data Source={settings.DBPath};version=3;"))
             {
                 connection.Open();
                 using (var cmd = new SQLiteCommand(sql, connection))
@@ -400,14 +361,14 @@ namespace LaunchMe
                                     Int32Rect.Empty,
                                     BitmapSizeOptions.FromEmptyOptions()),
                                 Margin = new Thickness(3),
-                                Width = IconSize,
-                                Height = IconSize
+                                Width = settings.IconSize,
+                                Height = settings.IconSize
                             };
                         });
                         // Have to wrap all UI Components in this to avoid errors
                         ret.Add(Dispatcher.Invoke(() =>
                         {
-                            return new ListItemFileIcon(name, fp, icon, IconSize);
+                            return new ListItemFileIcon(name, fp, icon, settings);
                         }));
                     }
                     connection.Close();
@@ -434,7 +395,7 @@ namespace LaunchMe
             }
 
             var searchFor = userInput.Text;
-            var maxResults = MaxResults;
+            var maxResults = settings.MaxResults;
 
             var results = await Task.Run(() =>
             {
@@ -442,6 +403,7 @@ namespace LaunchMe
             });
 
             SearchResults = results;
+
             if (SearchResults.Count > 0)
             {
                 FadeComponentIn(listResults);
@@ -483,6 +445,14 @@ namespace LaunchMe
         {
             this.Focus();
             Keyboard.Focus(userInput);
+        }
+
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.OemComma)
+            {
+                ShowSettingsWindow();
+            }
         }
     }
 }

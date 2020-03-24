@@ -1,0 +1,16 @@
+﻿<Window x:Class="LaunchMe.Window1"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:LaunchMe"
+        mc:Ignorable="d"
+        Title="LaunchMe Settings" Height="300" Width="600" Topmost="True" WindowStartupLocation="CenterOwner" Icon="{DynamicResource AppIcon}">
+    <Grid>
+        <TabControl TabStripPlacement="Top">
+            <TabItem Header="Scan Directories" x:Name="scanDirsPage">
+                <ListView x:Name="scanDirsList" ItemsSource="{Binding }"></ListView>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

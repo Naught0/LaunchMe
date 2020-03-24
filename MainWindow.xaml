@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LaunchMe"
         mc:Ignorable="d"
-        Title="LaunchMe" Height="450" Width="800" Topmost="True" WindowStartupLocation="CenterScreen" WindowStyle="None" DataContext="{Binding RelativeSource={RelativeSource Self}}" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" ResizeMode="NoResize" SizeToContent="Height" StateChanged="Window_StateChanged">
+        Title="LaunchMe" Height="450" Width="800" Topmost="True" WindowStartupLocation="CenterScreen" WindowStyle="None" DataContext="{Binding RelativeSource={RelativeSource Self}}" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" ResizeMode="NoResize" SizeToContent="Height" StateChanged="Window_StateChanged" KeyDown="Window_KeyDown">
     <Grid x:Name="MainGrid" Margin="0" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition></RowDefinition>
